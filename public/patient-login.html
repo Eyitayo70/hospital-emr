@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Patient Log In · Wayfind General Hospital Registry</title>
+<link rel="icon" href="/img/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div style="max-width:420px; margin:60px auto; padding:0 24px;">
+  <div style="margin-bottom:24px;">
+    <a href="/" style="display:flex; align-items:center; gap:8px; font-size:.85rem; color:var(--ink-soft); text-decoration:none; margin-bottom:6px;"><img src="/img/logo.svg" alt="" width="20" height="20">← Wayfind General Hospital Registry</a>
+    <h1>Patient Log In</h1>
+  </div>
+  <div class="panel">
+    <form id="loginForm">
+      <div class="field required"><label>Email</label><input type="email" name="email" required autofocus></div>
+      <div class="field required"><label>Password</label><input type="password" name="password" required></div>
+      <button class="btn" type="submit" style="width:100%; justify-content:center;">Log In</button>
+    </form>
+  </div>
+  <p style="text-align:center; margin-top:16px;"><a href="/patient-signup.html">Don't have a folder yet? Open one</a></p>
+  <p style="text-align:center; margin-top:8px;"><a href="/patient-forgot-password.html">Forgot your password?</a></p>
+</div>
+<script src="/js/app.js"></script>
+<script>
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector("button[type=submit]");
+  btn.disabled = true;
+  const fd = new FormData(e.target);
+  const body = Object.fromEntries(fd.entries());
+  try {
+    await Api.patientLogin(body);
+    location.href = "/patient-dashboard.html";
+  } catch (err) {
+    toast(err.message, true);
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

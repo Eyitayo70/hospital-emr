@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Officer Log In · Wayfind General Hospital Registry</title>
+<link rel="icon" href="/img/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div style="max-width:420px; margin:60px auto; padding:0 24px;">
+  <div style="margin-bottom:24px;">
+    <a href="/officer-portal.html" style="display:flex; align-items:center; gap:8px; font-size:.85rem; color:var(--ink-soft); text-decoration:none; margin-bottom:6px;"><img src="/img/logo.svg" alt="" width="20" height="20">← Health Officer Portal</a>
+    <h1>Health Officer Log In</h1>
+  </div>
+
+  <div class="panel" id="stepPassword">
+    <form id="passwordForm">
+      <div class="field required"><label>Work email</label><input type="email" name="email" required autofocus></div>
+      <div class="field required"><label>Password</label><input type="password" name="password" required></div>
+      <button class="btn" type="submit" style="width:100%; justify-content:center;">Send Login Code</button>
+    </form>
+  </div>
+
+  <div class="panel" id="stepCode" style="display:none;">
+    <p style="color:var(--ink-soft);">We sent a 6-digit code to <strong id="codeEmail"></strong>. It expires in 10 minutes.</p>
+    <form id="codeForm">
+      <div class="field required"><label>Login code</label><input name="code" maxlength="6" inputmode="numeric" required autofocus></div>
+      <button class="btn" type="submit" style="width:100%; justify-content:center;">Verify &amp; Log In</button>
+    </form>
+    <button class="btn ghost small" id="backBtn" style="margin-top:10px;">← Use a different email</button>
+  </div>
+
+  <p style="text-align:center; margin-top:16px;"><a href="/officer-signup.html">Need an account? Register</a></p>
+  <p style="text-align:center; margin-top:8px;"><a href="/officer-forgot-password.html">Forgot your password?</a></p>
+</div>
+<script src="/js/app.js"></script>
+<script>
+let pendingEmail = "";
+
+document.getElementById("passwordForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector("button[type=submit]");
+  btn.disabled = true;
+  const fd = new FormData(e.target);
+  const body = Object.fromEntries(fd.entries());
+  try {
+    await Api.officerRequestCode(body);
+    pendingEmail = body.email;
+    document.getElementById("codeEmail").textContent = pendingEmail;
+    document.getElementById("stepPassword").style.display = "none";
+    document.getElementById("stepCode").style.display = "block";
+    toast("Code sent — check your email");
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById("codeForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector("button[type=submit]");
+  btn.disabled = true;
+  try {
+    await Api.officerVerifyCode({ email: pendingEmail, code: e.target.code.value.trim() });
+    location.href = "/index.html";
+  } catch (err) {
+    toast(err.message, true);
+    btn.disabled = false;
+  }
+});
+
+document.getElementById("backBtn").addEventListener("click", () => {
+  document.getElementById("stepCode").style.display = "none";
+  document.getElementById("stepPassword").style.display = "block";
+});
+</script>
+</body>
+</html>

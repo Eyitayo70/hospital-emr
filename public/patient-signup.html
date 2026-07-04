@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open a Folder · Wayfind General Hospital Registry</title>
+<link rel="icon" href="/img/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div style="max-width:640px; margin:0 auto; padding:44px 24px 60px;">
+  <div style="margin-bottom:24px;">
+    <a href="/" style="display:flex; align-items:center; gap:8px; font-size:.85rem; color:var(--ink-soft); text-decoration:none; margin-bottom:6px;"><img src="/img/logo.svg" alt="" width="20" height="20">← Wayfind General Hospital Registry</a>
+    <h1>Open Your Patient Folder</h1>
+    <p style="color:var(--ink-soft);">Create your own account to view your folder and appointments any time.</p>
+  </div>
+
+  <div class="panel">
+    <form id="signupForm">
+      <h3>Login details</h3>
+      <div class="grid-2">
+        <div class="field required"><label>Email</label><input type="email" name="email" required></div>
+        <div class="field required"><label>Password</label><input type="password" name="password" minlength="6" required></div>
+      </div>
+      <p class="helper-text" style="margin-top:-8px;">At least 6 characters. You'll use this to log back in.</p>
+
+      <hr class="section-divider">
+      <h3>Your details</h3>
+      <div class="grid-2">
+        <div class="field required"><label>First name</label><input name="first_name" required></div>
+        <div class="field required"><label>Last name</label><input name="last_name" required></div>
+      </div>
+      <div class="grid-3">
+        <div class="field required"><label>Date of birth</label><input type="date" name="dob" required></div>
+        <div class="field"><label>Gender</label>
+          <select name="gender"><option value="">Not specified</option><option>Female</option><option>Male</option><option>Other</option></select>
+        </div>
+        <div class="field"><label>Blood type</label>
+          <select name="blood_type"><option value="">Unknown</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="field"><label>Phone</label><input name="phone"></div>
+        <div class="field"><label>Allergies</label><input name="allergies" placeholder="e.g. Penicillin"></div>
+      </div>
+      <div class="field"><label>Address</label><input name="address"></div>
+      <div class="grid-2">
+        <div class="field"><label>Emergency contact name</label><input name="emergency_contact_name"></div>
+        <div class="field"><label>Emergency contact phone</label><input name="emergency_contact_phone"></div>
+      </div>
+
+      <div class="flex-between" style="margin-top:10px;">
+        <span class="helper-text" style="margin:0;">An MRN is assigned automatically.</span>
+        <button class="btn" type="submit">Create Folder</button>
+      </div>
+    </form>
+  </div>
+  <p style="text-align:center; margin-top:16px;"><a href="/patient-login.html">Already have a folder? Log in</a></p>
+</div>
+<script src="/js/app.js"></script>
+<script>
+document.getElementById("signupForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector("button[type=submit]");
+  btn.disabled = true;
+  const fd = new FormData(e.target);
+  const body = Object.fromEntries(fd.entries());
+  Object.keys(body).forEach(k => { if (body[k] === "") delete body[k]; });
+  try {
+    await Api.patientSignup(body);
+    location.href = "/patient-dashboard.html";
+  } catch (err) {
+    toast(err.message, true);
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

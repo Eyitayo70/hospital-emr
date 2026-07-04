@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Complaints · Wayfind General Hospital Registry</title>
+<link rel="icon" href="/img/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<script src="/js/app.js"></script>
+<script>
+(async function() {
+  const me = await requireRole("officer");
+  if (!me) return;
+
+  renderShell("complaints", "Patient Complaints", "Front Desk");
+
+  document.getElementById("page-content").innerHTML = `
+    <div class="searchbar">
+      <select id="fStatus" style="max-width:220px;">
+        <option value="">All statuses</option>
+        <option value="open">Open</option>
+        <option value="in-progress">In progress</option>
+        <option value="resolved">Resolved</option>
+      </select>
+    </div>
+    <div id="list"></div>
+  `;
+
+  function row(c) {
+    return `
+      <div class="panel">
+        <div class="flex-between">
+          <div>
+            <strong>${escapeHtml(c.first_name)} ${escapeHtml(c.last_name)}</strong>
+            <span class="mono" style="color:var(--ink-soft); font-size:.8rem;"> · ${c.mrn}</span>
+          </div>
+          <span style="font-size:.78rem; color:var(--ink-soft);">${fmtDate(c.created_at.slice(0,10))}</span>
+        </div>
+        <p style="margin:10px 0;">${escapeHtml(c.message)}</p>
+        <form data-id="${c.id}" class="respondForm">
+          <div class="grid-2">
+            <div class="field">
+              <label>Status</label>
+              <select name="status">
+                <option value="open" ${c.status==="open"?"selected":""}>Open</option>
+                <option value="in-progress" ${c.status==="in-progress"?"selected":""}>In progress</option>
+                <option value="resolved" ${c.status==="resolved"?"selected":""}>Resolved</option>
+              </select>
+            </div>
+            <div class="field"><label>Response</label><input name="response" value="${escapeHtml(c.response || "")}" placeholder="Reply to patient…"></div>
+          </div>
+          <button class="btn small" type="submit">Save</button>
+        </form>
+      </div>`;
+  }
+
+  async function load() {
+    const list = document.getElementById("list");
+    try {
+      const complaints = await Api.listComplaints(document.getElementById("fStatus").value);
+      list.innerHTML = complaints.length ? complaints.map(row).join("") : `<div class="panel empty-state"><h3>No complaints</h3></div>`;
+      list.querySelectorAll(".respondForm").forEach(f => {
+        f.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const id = f.dataset.id;
+          try {
+            await Api.updateComplaint(id, { status: f.status.value, response: f.response.value });
+            toast("Saved");
+            load();
+          } catch (err) { toast(err.message, true); }
+        });
+      });
+    } catch (e) {
+      list.innerHTML = `<div class="panel empty-state">${escapeHtml(e.message)}</div>`;
+    }
+  }
+
+  document.getElementById("fStatus").addEventListener("change", load);
+  load();
+})();
+</script>
+</body>
+</html>

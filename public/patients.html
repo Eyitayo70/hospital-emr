@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Patient Registry · Wayfind General Hospital Registry</title>
+<link rel="icon" href="/img/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<script src="/js/app.js"></script>
+<script>
+(async function() {
+  const me = await requireRole("officer");
+  if (!me) return;
+
+renderShell("patients", "Patient Registry", "All Hospital Folders");
+document.getElementById("topline-actions").innerHTML = `<a class="btn" href="/register.html">+ Open New Folder</a>`;
+
+document.getElementById("page-content").innerHTML = `
+  <div class="searchbar">
+    <input id="q" placeholder="Search by name, MRN, or phone…" autofocus>
+  </div>
+  <div class="panel" style="padding:0;">
+    <table>
+      <thead><tr><th>MRN</th><th>Patient</th><th>Age</th><th>Department</th><th>Phone</th><th>Folder opened</th></tr></thead>
+      <tbody id="rows"><tr><td colspan="6"><div class="empty-state">Loading…</div></td></tr></tbody>
+    </table>
+  </div>
+`;
+
+function renderRows(patients) {
+  const rows = document.getElementById("rows");
+  if (!patients.length) {
+    rows.innerHTML = `<tr><td colspan="6"><div class="empty-state"><h3>No matching folders</h3><p>Try a different search, or open a new folder.</p></div></td></tr>`;
+    return;
+  }
+  rows.innerHTML = patients.map(p => `
+    <tr class="row-link" onclick="location.href='/patient.html?id=${p.id}'">
+      <td class="mono">${p.mrn}</td>
+      <td>${escapeHtml(p.first_name)} ${escapeHtml(p.last_name)}</td>
+      <td>${age(p.dob)}</td>
+      <td><span class="dept-swatch" style="background:${deptColor(p.department)}"></span>${escapeHtml(p.department)}</td>
+      <td>${escapeHtml(p.phone || "—")}</td>
+      <td>${fmtDate(p.created_at.slice(0,10))}</td>
+    </tr>`).join("");
+}
+
+async function search(q) {
+  try {
+    renderRows(await Api.listPatients(q));
+  } catch (e) {
+    document.getElementById("rows").innerHTML = `<tr><td colspan="6"><div class="empty-state">${escapeHtml(e.message)}</div></td></tr>`;
+  }
+}
+
+let t;
+document.getElementById("q").addEventListener("input", (e) => {
+  clearTimeout(t);
+  t = setTimeout(() => search(e.target.value.trim()), 220);
+});
+
+search("");
+
+})();
+</script>
+</body>
+</html>

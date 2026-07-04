@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Folder · Wayfind General Hospital Registry</title>
+<link rel="icon" href="/img/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div style="max-width:820px; margin:0 auto; padding:34px 24px 60px;">
+  <div class="flex-between" style="margin-bottom:24px;">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <img src="/img/logo.svg" alt="" width="38" height="38">
+      <div>
+        <div class="eyebrow" style="text-transform:uppercase; letter-spacing:.12em; font-size:.72rem; color:var(--ink-soft); font-weight:600;">Patient Portal</div>
+        <h1 style="margin:0;">My Folder</h1>
+      </div>
+    </div>
+    <button class="btn ghost" onclick="doLogout('/')">Log out</button>
+  </div>
+  <div id="content"><div class="panel empty-state">Loading…</div></div>
+</div>
+<script src="/js/app.js"></script>
+<script>
+(async function() {
+  const me = await requireRole("patient");
+  if (!me) return;
+
+  const content = document.getElementById("content");
+
+  function kv(k, v) {
+    return `<div class="kv-item"><div class="k">${k}</div><div class="v">${v || "—"}</div></div>`;
+  }
+
+  function apptRow(a) {
+    return `
+      <tr>
+        <td>${fmtDate(a.date)}<div style="color:var(--ink-soft); font-size:.78rem;">${fmtTime(a.time)}</div></td>
+        <td><span class="dept-swatch" style="background:${deptColor(a.department)}"></span>${escapeHtml(a.department)}</td>
+        <td>${escapeHtml(a.provider_name)}</td>
+        <td>${escapeHtml(a.reason || "—")}</td>
+        <td><span class="chip status-${a.status}">${a.status.replace("-"," ")}</span></td>
+      </tr>`;
+  }
+
+  function complaintRow(c) {
+    return `
+      <div class="panel" style="box-shadow:none; border-color:var(--line); padding:16px 18px; margin-bottom:12px;">
+        <div class="flex-between" style="margin-bottom:8px;">
+          <span class="chip status-${c.status === 'resolved' ? 'completed' : c.status === 'in-progress' ? 'checked-in' : 'scheduled'}">${c.status.replace("-"," ")}</span>
+          <span style="font-size:.76rem; color:var(--ink-soft);">${fmtDate(c.created_at.slice(0,10))}</span>
+        </div>
+        <p style="margin-bottom:${c.response ? '10px' : '0'};">${escapeHtml(c.message)}</p>
+        ${c.response ? `<div style="background:var(--paper-dim); border-radius:4px; padding:10px 12px; font-size:.88rem;"><strong>Response:</strong> ${escapeHtml(c.response)}</div>` : ""}
+      </div>`;
+  }
+
+  async function loadComplaints() {
+    const list = document.getElementById("complaintList");
+    try {
+      const complaints = await Api.myComplaints();
+      list.innerHTML = complaints.length ? complaints.map(complaintRow).join("") : `<p style="color:var(--ink-soft);">No complaints submitted yet.</p>`;
+    } catch (e) {
+      list.innerHTML = `<p style="color:var(--rust);">${escapeHtml(e.message)}</p>`;
+    }
+  }
+
+  try {
+    const p = await Api.myPatientRecord();
+    const dc = deptColor(p.department);
+    const upcoming = (p.appointments || []).filter(a => ["scheduled","checked-in"].includes(a.status));
+    const past = (p.appointments || []).filter(a => !["scheduled","checked-in"].includes(a.status));
+
+    content.innerHTML = `
+      <div class="folder" style="--dept-color:${dc};">
+        <div class="folder-tab-label">${escapeHtml(p.department)}</div>
+        <div class="folder-header">
+          <div>
+            <div class="name">${escapeHtml(p.first_name)} ${escapeHtml(p.last_name)}</div>
+            <div class="mrn mono">MRN ${p.mrn}</div>
+          </div>
+          <div class="stamp">Read-only</div>
+        </div>
+        <div class="kv-grid">
+          ${kv("Date of birth", fmtDate(p.dob) + ` (age ${age(p.dob)})`)}
+          ${kv("Gender", p.gender)}
+          ${kv("Blood type", p.blood_type)}
+          ${kv("Phone", p.phone)}
+          ${kv("Email", p.email)}
+          ${kv("Address", p.address)}
+          ${kv("Emergency contact", p.emergency_contact_name ? `${p.emergency_contact_name} (${p.emergency_contact_phone || "no phone"})` : null)}
+          ${kv("Allergies", p.allergies)}
+        </div>
+        <p class="helper-text" style="margin-top:14px;">To update these details, please visit the hospital and speak with a health records officer.</p>
+      </div>
+
+      <div class="panel">
+        <h2>Upcoming Appointments</h2>
+        <table><thead><tr><th>When</th><th>Department</th><th>Provider</th><th>Reason</th><th>Status</th></tr></thead>
+        <tbody>${upcoming.length ? upcoming.map(apptRow).join("") : `<tr><td colspan="5"><div class="empty-state">No upcoming appointments. The hospital will schedule these for you.</div></td></tr>`}</tbody></table>
+      </div>
+
+      <div class="panel">
+        <h2>Past Appointments</h2>
+        <table><thead><tr><th>When</th><th>Department</th><th>Provider</th><th>Reason</th><th>Status</th></tr></thead>
+        <tbody>${past.length ? past.map(apptRow).join("") : `<tr><td colspan="5"><div class="empty-state">No past appointments.</div></td></tr>`}</tbody></table>
+      </div>
+
+      <div class="panel">
+        <h2>Complaints</h2>
+        <form id="complaintForm" style="margin-bottom:20px;">
+          <div class="field"><label>Describe your complaint</label><textarea name="message" rows="3" required placeholder="Tell us what happened…"></textarea></div>
+          <button class="btn small" type="submit">Submit Complaint</button>
+        </form>
+        <div id="complaintList"><div class="empty-state">Loading…</div></div>
+      </div>
+    `;
+
+    document.getElementById("complaintForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const msg = e.target.message.value.trim();
+      if (!msg) return;
+      try {
+        await Api.submitComplaint(msg);
+        e.target.reset();
+        toast("Complaint submitted");
+        loadComplaints();
+      } catch (err) { toast(err.message, true); }
+    });
+
+    loadComplaints();
+  } catch (e) {
+    content.innerHTML = `<div class="panel empty-state"><h3>Couldn't load your folder</h3><p>${escapeHtml(e.message)}</p></div>`;
+  }
+})();
+</script>
+</body>
+</html>

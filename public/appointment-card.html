@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Appointment Card · Wayfind General Hospital Registry</title>
+<link rel="icon" href="/img/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body style="background:var(--paper);">
+<script src="/js/app.js"></script>
+<script>
+const aid = new URLSearchParams(location.search).get("id");
+
+document.body.insertAdjacentHTML("afterbegin", `
+  <div style="max-width:520px; margin:40px auto; padding:0 20px;">
+    <div class="no-print flex-between" style="margin-bottom:16px;">
+      <a class="btn ghost small" href="javascript:history.back()">← Back</a>
+      <button class="btn small" onclick="window.print()">Print Card</button>
+    </div>
+    <div id="card"></div>
+  </div>
+`);
+
+async function load() {
+  const me = await requireRole("officer");
+  if (!me) return;
+  const el = document.getElementById("card");
+  try {
+    const a = await Api.getAppointment(aid);
+    const dc = deptColor(a.department);
+    el.innerHTML = `
+      <div class="appt-card">
+        <div class="head" style="background:${dc};">
+          <div>
+            <div class="h-title">Appointment Card</div>
+            <div class="h-code mono">${a.appointment_code}</div>
+          </div>
+          <div class="mono" style="font-size:.8rem;">MRN ${a.mrn}</div>
+        </div>
+        <div class="body">
+          <div class="row"><span class="k">Patient</span><span>${escapeHtml(a.first_name)} ${escapeHtml(a.last_name)}</span></div>
+          <div class="row"><span class="k">Date</span><span>${fmtDate(a.date)}</span></div>
+          <div class="row"><span class="k">Time</span><span>${fmtTime(a.time)}</span></div>
+          <div class="row"><span class="k">Department</span><span>${escapeHtml(a.department)}</span></div>
+          <div class="row"><span class="k">Provider</span><span>${escapeHtml(a.provider_name)}</span></div>
+          <div class="row"><span class="k">Location</span><span>${escapeHtml(a.location || "Main building")}</span></div>
+          <div class="row"><span class="k">Reason</span><span>${escapeHtml(a.reason || "—")}</span></div>
+          <div class="row"><span class="k">Status</span><span class="chip status-${a.status}">${a.status.replace("-"," ")}</span></div>
+        </div>
+        <div class="foot">Please arrive 15 minutes early with a valid photo ID and insurance card.</div>
+      </div>
+    `;
+  } catch (e) {
+    el.innerHTML = `<div class="panel empty-state">${escapeHtml(e.message)}</div>`;
+  }
+}
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New Folder · Wayfind General Hospital Registry</title>
+<link rel="icon" href="/img/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<script src="/js/app.js"></script>
+<script>
+(async function() {
+  const me = await requireRole("officer");
+  if (!me) return;
+
+const editId = new URLSearchParams(location.search).get("edit");
+
+renderShell("register", editId ? "Edit Hospital Folder" : "Open a New Hospital Folder", "Patient Registration");
+
+document.getElementById("page-content").innerHTML = `
+  <div class="panel" style="max-width:760px;">
+    <form id="regForm">
+      <h3>Identity</h3>
+      <div class="grid-2">
+        <div class="field required"><label>First name</label><input name="first_name" required></div>
+        <div class="field required"><label>Last name</label><input name="last_name" required></div>
+      </div>
+      <div class="grid-3">
+        <div class="field required"><label>Date of birth</label><input type="date" name="dob" required></div>
+        <div class="field"><label>Gender</label>
+          <select name="gender">
+            <option value="">Not specified</option>
+            <option>Female</option><option>Male</option><option>Other</option>
+          </select>
+        </div>
+        <div class="field"><label>Blood type</label>
+          <select name="blood_type">
+            <option value="">Unknown</option>
+            <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+            <option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
+          </select>
+        </div>
+      </div>
+
+      <hr class="section-divider">
+      <h3>Contact</h3>
+      <div class="grid-2">
+        <div class="field"><label>Phone</label><input name="phone" placeholder="555-0100"></div>
+        <div class="field"><label>Email</label><input type="email" name="email"></div>
+      </div>
+      <div class="field"><label>Address</label><input name="address"></div>
+      <div class="grid-2">
+        <div class="field"><label>Emergency contact name</label><input name="emergency_contact_name"></div>
+        <div class="field"><label>Emergency contact phone</label><input name="emergency_contact_phone"></div>
+      </div>
+
+      <hr class="section-divider">
+      <h3>Administrative</h3>
+      <div class="grid-2">
+        <div class="field"><label>Admitting department</label>
+          <select name="department">
+            <option>General</option><option>Cardiology</option><option>Pediatrics</option>
+            <option>Orthopedics</option><option>Neurology</option><option>Radiology</option>
+            <option>Oncology</option><option>Emergency</option><option>Maternity</option><option>Dermatology</option>
+          </select>
+        </div>
+        <div class="field"><label>Insurance provider</label><input name="insurance_provider"></div>
+      </div>
+      <div class="grid-2">
+        <div class="field"><label>Insurance ID</label><input name="insurance_id"></div>
+        <div class="field"><label>Known allergies</label><input name="allergies" placeholder="e.g. Penicillin"></div>
+      </div>
+      <div class="field"><label>Intake notes</label><textarea name="notes" rows="3"></textarea></div>
+
+      <div class="flex-between" style="margin-top:10px;">
+        <span class="helper-text" style="margin:0;">${editId ? "MRN stays the same — only details are updated." : "An MRN (medical record number) is assigned automatically on save."}</span>
+        <button class="btn" type="submit">${editId ? "Save Changes" : "Open Folder"}</button>
+      </div>
+    </form>
+  </div>
+`;
+
+const form = document.getElementById("regForm");
+
+if (editId) {
+  Api.getPatient(editId).then(p => {
+    Object.entries(p).forEach(([k, v]) => {
+      const input = form.elements[k];
+      if (input && v != null) input.value = v;
+    });
+  }).catch(e => toast(e.message, true));
+}
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector("button[type=submit]");
+  btn.disabled = true;
+  const fd = new FormData(e.target);
+  const body = Object.fromEntries(fd.entries());
+  Object.keys(body).forEach(k => { if (body[k] === "") delete body[k]; });
+  try {
+    const patient = editId ? await Api.updatePatient(editId, body) : await Api.createPatient(body);
+    toast(editId ? "Folder updated" : `Folder opened — MRN ${patient.mrn}`);
+    location.href = `/patient.html?id=${patient.id}`;
+  } catch (err) {
+    toast(err.message, true);
+    btn.disabled = false;
+  }
+});
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard · Wayfind General Hospital Registry</title>
+<link rel="icon" href="/img/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<script src="/js/app.js"></script>
+<script>
+async function init() {
+  const me = await requireRole("officer");
+  if (!me) return;
+
+renderShell("dashboard", "Front Desk Dashboard", "Today · " + new Date().toLocaleDateString(undefined,{weekday:'long', year:'numeric', month:'long', day:'numeric'}));
+
+document.getElementById("topline-actions").innerHTML =
+  `<a class="btn" href="/register.html">+ Open New Folder</a>`;
+
+async function load() {
+  const content = document.getElementById("page-content");
+  try {
+    const s = await Api.stats();
+
+    const statCards = `
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="num">${s.total_patients}</div>
+          <div class="label">Patient folders on file</div>
+        </div>
+        <div class="stat-card accent-teal">
+          <div class="num">${s.today_appointments}</div>
+          <div class="label">Appointments today</div>
+        </div>
+        <div class="stat-card accent-rust">
+          <div class="num">${s.upcoming_appointments}</div>
+          <div class="label">Upcoming (scheduled)</div>
+        </div>
+      </div>`;
+
+    const scheduleRows = s.todays_schedule.length
+      ? s.todays_schedule.map(a => `
+          <tr class="row-link" onclick="location.href='/patient.html?id=${a.patient_id}'">
+            <td>${fmtTime(a.time)}</td>
+            <td><span class="dept-swatch" style="background:${deptColor(a.department)}"></span>${escapeHtml(a.department)}</td>
+            <td>${escapeHtml(a.first_name)} ${escapeHtml(a.last_name)} <span class="mono" style="color:var(--ink-soft); font-size:.78rem;">${a.mrn}</span></td>
+            <td>${escapeHtml(a.provider_name)}</td>
+            <td><span class="chip status-${a.status}">${a.status.replace("-", " ")}</span></td>
+          </tr>`).join("")
+      : `<tr><td colspan="5"><div class="empty-state">No appointments booked for today yet.</div></td></tr>`;
+
+    const recentRows = s.recent_patients.length
+      ? s.recent_patients.map(p => `
+          <tr class="row-link" onclick="location.href='/patient.html?id=${p.id}'">
+            <td class="mono">${p.mrn}</td>
+            <td>${escapeHtml(p.first_name)} ${escapeHtml(p.last_name)}</td>
+            <td>${escapeHtml(p.department)}</td>
+            <td>${fmtDate(p.created_at.slice(0,10))}</td>
+          </tr>`).join("")
+      : `<tr><td colspan="4"><div class="empty-state">No patients registered yet.</div></td></tr>`;
+
+    content.innerHTML = `
+      ${statCards}
+      <div class="panel">
+        <div class="flex-between"><h2>Today's Schedule</h2><a href="/appointments.html">View all appointments →</a></div>
+        <table><thead><tr><th>Time</th><th>Department</th><th>Patient</th><th>Provider</th><th>Status</th></tr></thead>
+        <tbody>${scheduleRows}</tbody></table>
+      </div>
+      <div class="panel">
+        <div class="flex-between"><h2>Recently Opened Folders</h2><a href="/patients.html">View registry →</a></div>
+        <table><thead><tr><th>MRN</th><th>Patient</th><th>Department</th><th>Opened</th></tr></thead>
+        <tbody>${recentRows}</tbody></table>
+      </div>`;
+  } catch (e) {
+    content.innerHTML = `<div class="panel empty-state"><h3>Couldn't load dashboard</h3><p>${escapeHtml(e.message)}</p></div>`;
+  }
+}
+load();
+}
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Appointments · Wayfind General Hospital Registry</title>
+<link rel="icon" href="/img/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<script src="/js/app.js"></script>
+<script>
+(async function() {
+  const me = await requireRole("officer");
+  if (!me) return;
+
+renderShell("appointments", "Appointments", "All Departments");
+document.getElementById("topline-actions").innerHTML = `<button class="btn" id="newBtn">+ Schedule Appointment</button>`;
+
+document.getElementById("page-content").innerHTML = `
+  <div id="newApptPanel" style="display:none;"></div>
+  <div class="panel" style="padding:16px 24px;">
+    <div class="grid-3" style="align-items:end;">
+      <div class="field" style="margin-bottom:0;"><label>Date</label><input type="date" id="fDate"></div>
+      <div class="field" style="margin-bottom:0;"><label>Status</label>
+        <select id="fStatus">
+          <option value="">All statuses</option>
+          <option value="scheduled">Scheduled</option>
+          <option value="checked-in">Checked-in</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="no-show">No-show</option>
+        </select>
+      </div>
+      <div class="field" style="margin-bottom:0;"><button class="btn secondary" id="clearFilters">Clear filters</button></div>
+    </div>
+  </div>
+  <div class="panel" style="padding:0;">
+    <table>
+      <thead><tr><th>Date</th><th>Time</th><th>Patient</th><th>Department</th><th>Provider</th><th>Status</th><th></th></tr></thead>
+      <tbody id="rows"><tr><td colspan="7"><div class="empty-state">Loading…</div></td></tr></tbody>
+    </table>
+  </div>
+`;
+
+let patientOptions = [];
+
+async function loadPatientOptions() {
+  patientOptions = await Api.listPatients("");
+}
+
+function newApptFormHtml() {
+  return `
+    <div class="panel">
+      <h3>Schedule an Appointment</h3>
+      <form id="apptForm">
+        <div class="field required"><label>Patient</label>
+          <select name="patient_id" required>
+            <option value="">Select a patient…</option>
+            ${patientOptions.map(p => `<option value="${p.id}">${escapeHtml(p.first_name)} ${escapeHtml(p.last_name)} — ${p.mrn}</option>`).join("")}
+          </select>
+        </div>
+        <div class="grid-3">
+          <div class="field required"><label>Date</label><input type="date" name="date" required></div>
+          <div class="field required"><label>Time</label><input type="time" name="time" required></div>
+          <div class="field required"><label>Department</label>
+            <select name="department" required>
+              <option>General</option><option>Cardiology</option><option>Pediatrics</option>
+              <option>Orthopedics</option><option>Neurology</option><option>Radiology</option>
+              <option>Oncology</option><option>Emergency</option><option>Maternity</option><option>Dermatology</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="field required"><label>Provider</label><input name="provider_name" placeholder="Dr. …" required></div>
+          <div class="field"><label>Location / room</label><input name="location"></div>
+        </div>
+        <div class="field"><label>Reason for visit</label><input name="reason"></div>
+        <div class="flex-between">
+          <button type="button" class="btn ghost" id="cancelNew">Cancel</button>
+          <button class="btn" type="submit">Save Appointment</button>
+        </div>
+      </form>
+    </div>`;
+}
+
+document.getElementById("newBtn").addEventListener("click", async () => {
+  const panel = document.getElementById("newApptPanel");
+  if (patientOptions.length === 0) await loadPatientOptions();
+  panel.innerHTML = newApptFormHtml();
+  panel.style.display = "block";
+  panel.querySelector("#cancelNew").addEventListener("click", () => panel.style.display = "none");
+  panel.querySelector("#apptForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const body = Object.fromEntries(fd.entries());
+    Object.keys(body).forEach(k => { if (body[k] === "") delete body[k]; });
+    try {
+      await Api.createAppointment(body);
+      toast("Appointment booked");
+      panel.style.display = "none";
+      loadRows();
+    } catch (err) { toast(err.message, true); }
+  });
+});
+
+function row(a) {
+  return `
+    <tr class="row-link" onclick="location.href='/patient.html?id=${a.patient_id}'">
+      <td>${fmtDate(a.date)}</td>
+      <td>${fmtTime(a.time)}</td>
+      <td>${escapeHtml(a.first_name)} ${escapeHtml(a.last_name)} <span class="mono" style="color:var(--ink-soft); font-size:.78rem;">${a.mrn}</span></td>
+      <td><span class="dept-swatch" style="background:${deptColor(a.department)}"></span>${escapeHtml(a.department)}</td>
+      <td>${escapeHtml(a.provider_name)}</td>
+      <td><span class="chip status-${a.status}">${a.status.replace("-"," ")}</span></td>
+      <td class="no-print" onclick="event.stopPropagation()"><a class="btn ghost small" href="/appointment-card.html?id=${a.id}" target="_blank">Card</a></td>
+    </tr>`;
+}
+
+async function loadRows() {
+  const rows = document.getElementById("rows");
+  const params = {};
+  if (document.getElementById("fDate").value) params.date = document.getElementById("fDate").value;
+  if (document.getElementById("fStatus").value) params.status = document.getElementById("fStatus").value;
+  try {
+    const appts = await Api.listAppointments(params);
+    rows.innerHTML = appts.length
+      ? appts.map(row).join("")
+      : `<tr><td colspan="7"><div class="empty-state"><h3>No appointments found</h3><p>Try clearing filters, or schedule a new one.</p></div></td></tr>`;
+  } catch (e) {
+    rows.innerHTML = `<tr><td colspan="7"><div class="empty-state">${escapeHtml(e.message)}</div></td></tr>`;
+  }
+}
+
+document.getElementById("fDate").addEventListener("change", loadRows);
+document.getElementById("fStatus").addEventListener("change", loadRows);
+document.getElementById("clearFilters").addEventListener("click", () => {
+  document.getElementById("fDate").value = "";
+  document.getElementById("fStatus").value = "";
+  loadRows();
+});
+
+loadRows();
+
+})();
+</script>
+</body>
+</html>

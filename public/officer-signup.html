@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Officer Registration · Wayfind General Hospital Registry</title>
+<link rel="icon" href="/img/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div style="max-width:420px; margin:60px auto; padding:0 24px;">
+  <div style="margin-bottom:24px;">
+    <a href="/officer-portal.html" style="display:flex; align-items:center; gap:8px; font-size:.85rem; color:var(--ink-soft); text-decoration:none; margin-bottom:6px;"><img src="/img/logo.svg" alt="" width="20" height="20">← Health Officer Portal</a>
+    <h1>Health Officer Registration</h1>
+    <p class="helper-text" style="margin-top:6px;">Every login is verified with a one-time code sent to this email, in addition to your password.</p>
+  </div>
+  <div class="panel">
+    <form id="signupForm">
+      <div class="field required"><label>Full name</label><input name="full_name" required autofocus></div>
+      <div class="field required"><label>Work email</label><input type="email" name="email" required></div>
+      <div class="field required"><label>Password</label><input type="password" name="password" minlength="6" required></div>
+      <button class="btn" type="submit" style="width:100%; justify-content:center;">Register</button>
+    </form>
+  </div>
+  <p style="text-align:center; margin-top:16px;"><a href="/officer-login.html">Already registered? Log in</a></p>
+</div>
+<script src="/js/app.js"></script>
+<script>
+document.getElementById("signupForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector("button[type=submit]");
+  btn.disabled = true;
+  const fd = new FormData(e.target);
+  const body = Object.fromEntries(fd.entries());
+  try {
+    await Api.officerSignup(body);
+    toast("Registered — log in to continue");
+    location.href = "/officer-login.html";
+  } catch (err) {
+    toast(err.message, true);
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
